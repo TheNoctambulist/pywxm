@@ -1,0 +1,32 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  lint:
+    uses: ./.github/workflows/lint.yml
+  build:
+    runs-on: ubuntu-latest
+    needs: 
+      - lint
+    permissions:
+      contents: write # Required to create a draft release
+      id-token: write # Required to publish to PyPI
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set version number
+        run: |
+          version="${{ github.REF_NAME }}"
+          # Strip the "v" prefix
+          version=${version#v}
+          sed -i "s/\"0.0.0\"/\"${version}\"/" pyproject.toml
+      - uses: pdm-project/setup-pdm@v4
+      - name: Publish
+        run: pdm publish
+      - uses: ghalactic/github-release-from-tag@v5
+        with:
+          assets: |
+           - path: "dist/*"
