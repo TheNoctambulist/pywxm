@@ -1,0 +1,9 @@
+[tool.ruff]
+# Extend the base project configuration
+extend = "../pyproject.toml"
+
+[tool.ruff.lint]
+ignore = [
+    "D",    # Ignore docstrings for examples
+    "T201", # Allow print statements
+]
