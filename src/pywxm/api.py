@@ -137,7 +137,7 @@ class WxmClient:
             self._access_token, options={"verify_signature": False, "require": ["exp"]}
         )
         self._access_token_expiry = datetime.datetime.fromtimestamp(
-            timestamp=payload["exp"], tz=datetime.UTC
+            payload["exp"], tz=datetime.UTC
         )
         _LOGGER.debug("Updated access token. New expiry: %s", self._access_token_expiry)
 
