@@ -19,7 +19,15 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class AuthenticationError(BaseException):
-    """Represents an error that occured during authentication."""
+    """Raised when an authentication error occurs.
+
+    Authentication errors may occur during initial login, or if a problem occurs
+    with token based authentication during other API interactions.
+    """
+
+
+class UnexpectedError(BaseException):
+    """Raised when the API returns an unexpected error response."""
 
 
 RefreshTokenSubscriber = Callable[[str], Awaitable[Any]]
@@ -166,7 +174,7 @@ class WxmApi:
     async def list_devices(self) -> list[WxmDevice]:
         """Get the list of WeatherXM devices associated with the current user."""
         async with await self.client.get("me/devices") as resp:
-            resp.raise_for_status()  # TODO: Error handling?
+            await self._raise_if_error(resp)
 
             devices_response: list[dict[str, Any]] = await resp.json()
             return [WxmDevice.unmarshal(d) for d in devices_response]
@@ -174,7 +182,7 @@ class WxmApi:
     async def get_device(self, device_id: str) -> WxmDevice:
         """Get the current status for a WeatherXM device."""
         async with await self.client.get(f"me/devices/{device_id}") as resp:
-            resp.raise_for_status()  # TODO: Error handling?
+            await self._raise_if_error(resp)
 
             json_data = await resp.json()
             return WxmDevice.unmarshal(json_data)
@@ -202,7 +210,30 @@ class WxmApi:
         async with await self.client.get(
             f"me/devices/{device_id}/forecast", params=params
         ) as resp:
-            resp.raise_for_status()  # TODO: Error handling
+            await self._raise_if_error(resp)
 
             json_data = await resp.json()
             return WeatherForecast.unmarshal(json_data)
+
+    async def _raise_if_error(self, resp: aiohttp.ClientResponse) -> None:
+        """Raise an appropriate exception if an error response was received.
+
+        Does nothing if the respose was OK.
+        """
+        if resp.ok:
+            return
+
+        json_data = await resp.json()
+        error_message = json_data["message"]
+        match resp.status:
+            case 400:  # Bad request
+                # This error code will be raised if the input parameters were invalid
+                # so we raise a ValueError for this.
+                raise ValueError(error_message)
+            case 401:  # Unauthorized request
+                raise AuthenticationError(error_message)
+            case 500:  # Unexpected error
+                raise UnexpectedError(error_message)
+            case _:
+                # This shouldn't occur
+                raise UnexpectedError("Unknown response status: %d", resp.status)
