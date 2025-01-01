@@ -54,7 +54,7 @@ class WxmClient:
                 shared with other APIs.
         """
         self._session = session
-        self._refresh_token = refresh_token
+        self.refresh_token = refresh_token
 
         self._access_token: str | None = None
         self._access_token_expiry: datetime.datetime | None = None
@@ -115,7 +115,7 @@ class WxmClient:
         ):
             return
 
-        data = {"refreshToken": self._refresh_token}
+        data = {"refreshToken": self.refresh_token}
         async with self._session.post(_BASE_URL / "auth/refresh", json=data) as resp:
             if resp.ok:
                 access_tokens: dict[str, str] = await resp.json()
@@ -127,9 +127,9 @@ class WxmClient:
                 raise AuthenticationError("Unknown error")
 
     async def _update_tokens(self, access_tokens: dict[str, str]) -> None:
-        old_refresh_token = self._refresh_token
+        old_refresh_token = self.refresh_token
 
-        self._refresh_token = access_tokens["refreshToken"]
+        self.refresh_token = access_tokens["refreshToken"]
         self._access_token = access_tokens["token"]
 
         # Decode the token expiry time
@@ -142,9 +142,9 @@ class WxmClient:
         _LOGGER.debug("Updated access token. New expiry: %s", self._access_token_expiry)
 
         # Notify subscribers if the refresh token has changed.
-        if old_refresh_token and old_refresh_token != self._refresh_token:
+        if old_refresh_token and old_refresh_token != self.refresh_token:
             for coro in asyncio.as_completed(
-                [s(self._refresh_token) for s in self._token_subscribers]
+                [s(self.refresh_token) for s in self._token_subscribers]
             ):
                 try:
                     _ = await coro
