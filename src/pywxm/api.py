@@ -18,7 +18,16 @@ _BASE_URL = URL("https://api.weatherxm.com/api/v1")
 _LOGGER = logging.getLogger(__name__)
 
 
-class AuthenticationError(BaseException):
+class WxmError(Exception):
+    """Base exception class for errors from the WeatherXM API."""
+
+    def __init__(self, message: str) -> None:
+        """Initialise the WeatherXM error."""
+        super().__init__(message)
+        self.message = message
+
+
+class AuthenticationError(WxmError):
     """Raised when an authentication error occurs.
 
     Authentication errors may occur during initial login, or if a problem occurs
@@ -26,7 +35,7 @@ class AuthenticationError(BaseException):
     """
 
 
-class UnexpectedError(BaseException):
+class UnexpectedError(WxmError):
     """Raised when the API returns an unexpected error response."""
 
 
@@ -236,4 +245,4 @@ class WxmApi:
                 raise UnexpectedError(error_message)
             case _:
                 # This shouldn't occur
-                raise UnexpectedError("Unknown response status: %d", resp.status)
+                raise UnexpectedError(f"Unknown response status: {resp.status}")

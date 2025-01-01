@@ -3,8 +3,10 @@
 from .api import (
     AuthenticationError,
     ForecastType,
+    UnexpectedError,
     WxmApi,
     WxmClient,
+    WxmError,
 )
 from .model import (
     BatteryState,
@@ -22,7 +24,12 @@ from .model import (
 # fmt:off
 __all__ = [
     # API
-    "AuthenticationError", "WxmApi", "WxmClient", "ForecastType",
+    "WxmError",
+    "AuthenticationError",
+    "UnexpectedError",
+    "WxmApi",
+    "WxmClient",
+    "ForecastType",
     # Model
     "BatteryState",
     "DailyForecast",
