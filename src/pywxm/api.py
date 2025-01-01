@@ -185,6 +185,9 @@ class WxmApi:
         async with await self.client.get("me/devices") as resp:
             await self._raise_if_error(resp)
 
+            if _LOGGER.isEnabledFor(logging.DEBUG):
+                _LOGGER.debug("list_devices response: %s", await resp.text())
+
             devices_response: list[dict[str, Any]] = await resp.json()
             return [WxmDevice.unmarshal(d) for d in devices_response]
 
@@ -192,6 +195,11 @@ class WxmApi:
         """Get the current status for a WeatherXM device."""
         async with await self.client.get(f"me/devices/{device_id}") as resp:
             await self._raise_if_error(resp)
+
+            if _LOGGER.isEnabledFor(logging.DEBUG):
+                _LOGGER.debug(
+                    "get_device(%s) response: %s", device_id, await resp.text()
+                )
 
             json_data = await resp.json()
             return WxmDevice.unmarshal(json_data)
@@ -220,6 +228,11 @@ class WxmApi:
             f"me/devices/{device_id}/forecast", params=params
         ) as resp:
             await self._raise_if_error(resp)
+
+            if _LOGGER.isEnabledFor(logging.DEBUG):
+                _LOGGER.debug(
+                    "get_forecast(%s) response: %s", params, await resp.text()
+                )
 
             json_data = await resp.json()
             return WeatherForecast.unmarshal(json_data)
