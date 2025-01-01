@@ -99,30 +99,46 @@ class WxmDevice:
     id: str
     """Unique identifier for the device."""
     name: str
-    """Friendly name for the device."""
+    """Public name for the device."""
+    friendly_name: str | None
+    """Optional friendly name for the device."""
+
     relation: DeviceRelation
     """Whether the device is owned by the account, or just followed."""
+
+    weather_station_model: str
+    """The model of the weather station."""
+    firmware_version: str
+    """Current firmware version of the weather station."""
+
     address: str
     """Address where the weather station is installed."""
     timezone: str
     """Timezone where the weather station is installed."""
-    battery_state: BatteryState
-    """Current battery state of the weather station."""
     location: Location
     """Location of the weather station."""
+
+    battery_state: BatteryState
+    """Current battery state of the weather station."""
+
     current_weather: HourlyWeatherData
     """Latest weather data reported by the station."""
 
     @classmethod
     def unmarshal(cls, data: dict[str, Any]) -> "WxmDevice":  # noqa: D102
+        attributes = data["attributes"]
+        bundle = data["bundle"]
         return WxmDevice(
             id=data["id"],
             name=data["name"],
+            friendly_name=attributes.get("friendlyName", None),
             relation=DeviceRelation(data["relation"]),
+            weather_station_model=bundle["ws_model"],
+            firmware_version=attributes["firmware"]["current"],
             address=data["address"],
             timezone=data["timezone"],
-            battery_state=BatteryState(data["bat_state"]),
             location=Location.unmarshal(data["location"]),
+            battery_state=BatteryState(data["bat_state"]),
             current_weather=HourlyWeatherData.unmarshal(data["current_weather"]),
         )
 
