@@ -120,9 +120,12 @@ class WxmClient:
         if (
             self._access_token is not None
             and self._access_token_expiry is not None
-            and self._access_token_expiry < datetime.datetime.now(tz=datetime.UTC)
+            and self._access_token_expiry > datetime.datetime.now(tz=datetime.UTC)
         ):
             return
+
+        if self._access_token:
+            _LOGGER.debug("Access token expired, refreshing")
 
         data = {"refreshToken": self.refresh_token}
         async with self._session.post(_BASE_URL / "auth/refresh", json=data) as resp:
@@ -133,7 +136,12 @@ class WxmClient:
                 error = await resp.json()
                 raise AuthenticationError(error["message"])
             else:
-                raise AuthenticationError("Unknown error")
+                _LOGGER.error(
+                    "Unexpected status '%d' during token refresh. Response body: %s",
+                    resp.status,
+                    await resp.text(),
+                )
+                raise AuthenticationError(f"Unknown error: {resp.status}")
 
     async def _update_tokens(self, access_tokens: dict[str, str]) -> None:
         old_refresh_token = self.refresh_token
