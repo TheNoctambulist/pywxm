@@ -253,3 +253,41 @@ class WeatherForecast:
         return WeatherForecast(
             forecast=[ForecastForDate.unmarshal(d) for d in data],
         )
+
+
+@dataclass
+class TokenSummary:
+    """Token summary for a reward event."""
+
+    timestamp: datetime.datetime
+    base_reward: float
+    total_business_boost_reward: float | None
+    total_reward: float
+    """Sum of base reward plus any boosts."""
+    base_reward_score: int
+    """Percentage of maximum base reward awarded to the station."""
+
+    @classmethod
+    def unmarshal(cls, data: dict[str, Any]) -> "TokenSummary":  # noqa: D102
+        return TokenSummary(
+            timestamp=datetime.datetime.fromisoformat(data["timestamp"]),
+            base_reward=data["base_reward"],
+            total_business_boost_reward=data.get("total_business_boost_reward"),
+            total_reward=data["total_reward"],
+            base_reward_score=data["base_reward_score"],
+        )
+
+
+@dataclass
+class DeviceRewards:
+    """Reward information for a device."""
+
+    total_rewards: float
+    latest_reward: TokenSummary
+
+    @classmethod
+    def unmarshal(cls, data: dict[str, Any]) -> "DeviceRewards":  # noqa: D102
+        return DeviceRewards(
+            total_rewards=data["total_rewards"],
+            latest_reward=TokenSummary.unmarshal(data["latest"]),
+        )

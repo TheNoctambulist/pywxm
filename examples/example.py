@@ -3,6 +3,7 @@
 import asyncio
 import datetime
 import getpass
+import logging
 import pprint
 import sys
 
@@ -10,10 +11,12 @@ import aiohttp
 import pywxm
 
 
-async def main() -> None:
+async def main() -> None | int:
     refresh_token: str | None = None
     if len(sys.argv) > 1:
         refresh_token = sys.argv[1]
+
+    logging.basicConfig(level=logging.INFO)
 
     async with aiohttp.ClientSession() as session:
         wxm_client = pywxm.WxmClient(session, refresh_token)
@@ -27,11 +30,16 @@ async def main() -> None:
                 print(f"refresh_token={refresh_token}")
             except pywxm.AuthenticationError as e:
                 print(e)
+                return 1
 
         wxm_api = pywxm.WxmApi(wxm_client)
 
         devices = await wxm_api.list_devices()
         pprint.pp(devices)
+
+        rewards = await wxm_api.get_latest_rewards(devices[0].id)
+        print("*** Rewards: ")
+        pprint.pp(rewards)
 
         forecast = await wxm_api.get_forecast(
             devices[0].id,
@@ -56,4 +64,6 @@ async def main() -> None:
             await asyncio.sleep(120.0)
 
 
-asyncio.run(main())
+exit_code = asyncio.run(main())
+if exit_code:
+    sys.exit(exit_code)

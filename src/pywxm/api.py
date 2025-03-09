@@ -11,7 +11,7 @@ import aiohttp
 import jwt
 from yarl import URL
 
-from .model import WeatherForecast, WxmDevice
+from .model import DeviceRewards, WeatherForecast, WxmDevice
 
 _BASE_URL = URL("https://api.weatherxm.com/api/v1")
 
@@ -244,6 +244,19 @@ class WxmApi:
 
             json_data = await resp.json()
             return WeatherForecast.unmarshal(json_data)
+
+    async def get_latest_rewards(self, device_id: str) -> DeviceRewards:
+        """Get the latest rewards data for a WeatherXM device."""
+        async with await self.client.get(f"devices/{device_id}/rewards") as resp:
+            await self._raise_if_error(resp)
+
+            if _LOGGER.isEnabledFor(logging.DEBUG):
+                _LOGGER.debug(
+                    "get_latest_rewards(%s) response: %s", device_id, await resp.text()
+                )
+
+            json_data = await resp.json()
+            return DeviceRewards.unmarshal(json_data)
 
     async def _raise_if_error(self, resp: aiohttp.ClientResponse) -> None:
         """Raise an appropriate exception if an error response was received.
