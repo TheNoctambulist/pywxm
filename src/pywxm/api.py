@@ -36,7 +36,11 @@ class AuthenticationError(WxmError):
 
 
 class UnexpectedError(WxmError):
-    """Raised when the API returns an unexpected error response."""
+    """Raised when the API returns an unexpected error response.
+
+    In most cases, simply retrying the query after a delay is the most
+    appropriate response.
+    """
 
 
 RefreshTokenSubscriber = Callable[[str], Awaitable[Any]]
@@ -129,19 +133,25 @@ class WxmClient:
 
         data = {"refreshToken": self.refresh_token}
         async with self._session.post(_BASE_URL / "auth/refresh", json=data) as resp:
-            if resp.ok:
-                access_tokens: dict[str, str] = await resp.json()
-                await self._update_tokens(access_tokens)
-            elif resp.status in (400, 500):
-                error = await resp.json()
-                raise AuthenticationError(error["message"])
-            else:
-                _LOGGER.error(
-                    "Unexpected status '%d' during token refresh. Response body: %s",
-                    resp.status,
-                    await resp.text(),
-                )
-                raise AuthenticationError(f"Unknown error: {resp.status}")
+            match resp.status:
+                case _ if resp.ok:
+                    access_tokens: dict[str, str] = await resp.json()
+                    await self._update_tokens(access_tokens)
+                case 400, 500:
+                    error = await resp.json()
+                    raise AuthenticationError(error["message"])
+                case 522:
+                    _LOGGER.info("Connection timed out when refreshing access token")
+                    # This doesn't indicate an authentication error. Clients can
+                    # retry later.
+                    raise UnexpectedError("Connection timeout")
+                case _:
+                    _LOGGER.error(
+                        ("Unexpected status '%d' during token refresh. Response: %s"),
+                        resp.status,
+                        await resp.text(),
+                    )
+                    raise AuthenticationError(f"Unknown error: {resp.status}")
 
     async def _update_tokens(self, access_tokens: dict[str, str]) -> None:
         old_refresh_token = self.refresh_token
@@ -266,8 +276,11 @@ class WxmApi:
         if resp.ok:
             return
 
-        json_data = await resp.json()
-        error_message = json_data["message"]
+        error_message = f"Unknown response status: {resp.status}"
+        if resp.content_type == "application/json":
+            json_data = await resp.json()
+            error_message = json_data["message"]
+
         match resp.status:
             case 400:  # Bad request
                 # This error code will be raised if the input parameters were invalid
@@ -277,6 +290,8 @@ class WxmApi:
                 raise AuthenticationError(error_message)
             case 500:  # Unexpected error
                 raise UnexpectedError(error_message)
+            case 522:  # CloudFlare connection timeout response
+                raise UnexpectedError("Connection timed out")
             case _:
                 # This shouldn't occur
-                raise UnexpectedError(f"Unknown response status: {resp.status}")
+                raise UnexpectedError(error_message)
