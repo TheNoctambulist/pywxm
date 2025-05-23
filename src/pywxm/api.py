@@ -137,14 +137,19 @@ class WxmClient:
                 case _ if resp.ok:
                     access_tokens: dict[str, str] = await resp.json()
                     await self._update_tokens(access_tokens)
-                case 400, 500:
+                case 400:
                     error = await resp.json()
                     raise AuthenticationError(error["message"])
-                case 522:
-                    _LOGGER.info("Connection timed out when refreshing access token")
-                    # This doesn't indicate an authentication error. Clients can
-                    # retry later.
-                    raise UnexpectedError("Connection timeout")
+                # 5xx errors from the Cloudflare proxy don't indicate an
+                # authentication error. Clients can retry later.
+                case _ if resp.status >= 500 and resp.status < 600:  # noqa: PLR2004
+                    _LOGGER.info("%d status when refreshing access token", resp.status)
+                    _LOGGER.debug(
+                        "Unexpected status '%d' during token refresh. Response: %s",
+                        resp.status,
+                        await resp.text(),
+                    )
+                    raise UnexpectedError(f"{resp.status} status returned")
                 case _:
                     _LOGGER.error(
                         ("Unexpected status '%d' during token refresh. Response: %s"),
