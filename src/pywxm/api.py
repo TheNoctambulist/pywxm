@@ -173,6 +173,11 @@ class WxmClient:
         )
         _LOGGER.debug("Updated access token. New expiry: %s", self._access_token_expiry)
 
+        # Force renewal a few minutes before the expiry to avoid race conditions
+        self._access_token_expiry = self._access_token_expiry - datetime.timedelta(
+            minutes=5
+        )
+
         # Notify subscribers if the refresh token has changed.
         if old_refresh_token and old_refresh_token != self.refresh_token:
             for coro in asyncio.as_completed(
